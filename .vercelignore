@@ -1,0 +1,7 @@
+pipeline/
+data/
+docs/
+.venv/
+pyproject.toml
+uv.lock
+README.md
