@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en" data-default-country="ca5">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CentralAsiaCiv — Uzbekistan, Kazakhstan &amp; Central Asia as a Strategy Game</title>
+  <meta name="description" content="Explore Uzbekistan, Kazakhstan, Kyrgyzstan, Tajikistan and Turkmenistan drawn like a 4X strategy-game map: 25 km hex terrain from the Caspian Sea to the Pamirs, 76 cities, yields, 16 lenses, Silk Road wonders, resources, and 10 interactive advisors.">
+  <meta name="theme-color" content="#131e2a">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="canonical" href="https://centralasiaciv.vercel.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="CentralAsiaCiv">
+  <meta property="og:title" content="CentralAsiaCiv — Central Asia as a 4X Strategy-Game Map">
+  <meta property="og:description" content="Uzbekistan, Kazakhstan, Kyrgyzstan, Tajikistan &amp; Turkmenistan on a unified 25 km hex map: real relief, MODIS land cover, 76 cities, 16 lenses, 38 Silk Road wonders, resources &amp; 10 advisors.">
+  <meta property="og:url" content="https://centralasiaciv.vercel.app/">
+  <meta property="og:image" content="https://centralasiaciv.vercel.app/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="CentralAsiaCiv 4X hex strategy map of Uzbekistan, Kazakhstan, Kyrgyzstan, Tajikistan, and Turkmenistan from the Caspian Sea to the Pamir and Tian Shan mountains">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="CentralAsiaCiv — Central Asia as a 4X Strategy-Game Map">
+  <meta name="twitter:description" content="The real economy, geography &amp; Silk Road heritage of Uzbekistan, Kazakhstan, Kyrgyzstan, Tajikistan and Turkmenistan drawn as a 4X strategy map.">
+  <meta name="twitter:image" content="https://centralasiaciv.vercel.app/og-image.png">
+  <meta name="twitter:image:alt" content="CentralAsiaCiv 4X hex strategy map of Central Asia with city banners, snowy Pamirs and Tian Shan, rivers and Silk Road corridors">
+  <link rel="stylesheet" href="css/style.css?v=20261127">
+</head>
+<body>
+  <header id="topbar">
+    <div class="country-switcher" role="group" aria-label="Country switcher">
+      <div class="brand">
+        <select id="country-picker" class="map-picker" aria-label="Jump to country" title="Jump to Central Asian country"></select>
+      </div>
+    </div>
+    <div id="yields" class="yields" aria-label="Regional yields"></div>
+    <div class="spacer"></div>
+    <div class="search" role="search">
+      <span class="search-ic" aria-hidden="true"></span>
+      <input id="search-input" type="search" placeholder="Search cities, countries &amp; provinces" autocomplete="off" spellcheck="false"
+        role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-results" aria-label="Search cities, countries and provinces (/ or Ctrl K)">
+      <kbd class="search-kbd" aria-hidden="true">/</kbd>
+      <button type="button" class="icon-btn search-close" aria-label="Close search"></button>
+    </div>
+    <div id="turn" class="turn"></div>
+    <button id="btn-menu" class="btn btn-icon tb-menu-btn" type="button" aria-label="Menu: Advisors, Share, Help, Almanac"
+      aria-haspopup="true" aria-expanded="false" aria-controls="tb-buttons"></button>
+    <div class="tb-buttons" id="tb-buttons">
+      <button id="btn-share" class="btn" aria-haspopup="dialog" aria-expanded="false" aria-label="Share this view" title="Share: copy a link or download an image"></button>
+      <button id="btn-help" class="btn btn-icon" aria-label="Keyboard and mouse help" title="Help (?)"></button>
+      <button id="btn-pedia" class="btn" aria-label="Open the Almanac" title="What every number means and where it comes from"></button>
+    </div>
+  </header>
+
+  <canvas id="map" role="img" aria-label="Hex map of Central Asia"></canvas>
+
+  <div id="tooltip" class="tooltip" hidden></div>
+  <aside id="city-panel" class="panel" hidden role="region" aria-label="Details"></aside>
+
+  <div id="lens-area">
+    <div class="map-ctrls">
+      <button id="btn-home" class="panel map-ctrl" type="button" aria-label="Show the whole map" title="Show the whole map"></button>
+      <button id="btn-minimap" class="panel map-ctrl minimap-toggle" aria-pressed="false" aria-controls="minimap-wrap" aria-label="Show the minimap"></button>
+    </div>
+    <div id="lens-picker" class="panel lens-picker" hidden role="dialog" aria-label="Choose a lens"></div>
+    <div id="legend" class="panel legend" hidden role="group" aria-label="Lens legend"></div>
+    <div id="lens-dock" class="panel lens-dock" role="toolbar" aria-label="Map lenses">
+      <button id="btn-res" class="lens-btn res-toggle" aria-pressed="true" aria-label="Resources on tiles (R)" title="Show or hide resources on tiles (R)" hidden></button>
+      <div id="lens-quick" class="lens-quick"></div>
+      <button id="btn-lenses" class="lens-btn lens-more" aria-haspopup="dialog" aria-expanded="false" aria-controls="lens-picker"></button>
+    </div>
+  </div>
+
+  <div id="minimap-wrap" class="panel"><canvas id="minimap" aria-label="Minimap: click to jump" role="img"></canvas></div>
+
+  <div id="search-results" class="panel search-results" role="listbox" aria-label="Search results" hidden></div>
+  <div id="share-pop" class="panel share-pop" role="dialog" aria-label="Share" hidden></div>
+  <div id="yield-report" class="panel yield-report" role="dialog" aria-label="Regional report" tabindex="-1" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="announce" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <div id="pedia" class="modal" hidden>
+    <div class="modal-card panel" role="dialog" aria-modal="true" aria-label="Almanac">
+      <button class="close icon-btn" data-close aria-label="Close the Almanac">✕</button>
+      <nav id="pedia-nav" aria-label="Almanac pages"></nav>
+      <article id="pedia-body"></article>
+    </div>
+  </div>
+
+  <div id="help" class="modal" hidden>
+    <div class="help-card panel" role="dialog" aria-modal="true" aria-labelledby="help-title"></div>
+  </div>
+
+  <div id="loading">Surveying the Silk Road…</div>
+  <script type="module" src="js/boot.js"></script>
+</body>
+</html>

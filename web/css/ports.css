@@ -1,0 +1,742 @@
+/* World view (web/js/ext/ports): the world map, its country list and cards, and the viewer for community maps. */
+
+/* ---------- the "World" button beside the map menu: in an edition's top bar and above an open community map ---------- */
+.ports-launch {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  height: 28px; padding: 4px 10px 4px 9px; border-radius: 16px; cursor: pointer;
+  background: linear-gradient(180deg, #1f5c50, #123832);
+  border: 1px solid var(--gold-bright);
+  color: #fff3d1; font-family: var(--serif); font-size: 13px; font-weight: 600;
+  letter-spacing: .04em; line-height: 18px; white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 240, 200, .24), 0 1px 3px rgba(0, 0, 0, .55), 0 0 12px rgba(67, 198, 163, .28);
+  transition: background .15s, box-shadow .15s, transform .1s;
+}
+.ports-launch svg.icon { color: #7ae2c5; flex: none; }
+.ports-launch .ports-launch-lbl { display: inline !important; }
+.ports-launch .ports-launch-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 17px; padding: 0 5px; border-radius: 9px;
+  background: var(--gold-bright); color: #161005;
+  font: 700 11px/1 var(--sans); font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .4);
+}
+.ports-launch:hover {
+  background: linear-gradient(180deg, #287566, #174941);
+  box-shadow: inset 0 1px 0 rgba(255, 245, 210, .32), 0 1px 4px rgba(0, 0, 0, .6), 0 0 16px rgba(236, 208, 142, .38);
+}
+.ports-launch[aria-pressed="true"] {
+  background: linear-gradient(180deg, #6b5524, #403214);
+  border-color: #fff0be;
+  box-shadow: inset 0 1px 0 rgba(255, 245, 210, .3), 0 0 14px rgba(236, 208, 142, .42);
+}
+.ports-launch[aria-pressed="true"] svg.icon { color: var(--gold-bright); }
+@media (max-width: 1200px) and (min-width: 701px) {
+  .ports-launch { padding: 3px 8px 3px 7px; gap: 5px; font-size: 12.5px; }
+}
+@media (max-width: 700px) {
+  .ports-launch { height: 34px; min-width: 34px; justify-content: center; padding: 0 8px; gap: 5px; font-size: 12px; }
+  #topbar.tb-tight-count .ports-launch-count { display: none; }
+}
+
+/* The selected map's account sits beside World in both map bars. */
+.map-maker { flex: none; max-width: 170px; }
+.map-maker-chip {
+  display: flex; align-items: center; gap: 5px; height: 28px; padding: 0 8px 0 3px;
+  background: linear-gradient(180deg, #514225, #302719); border: 1px solid var(--gold);
+  border-radius: 16px; color: var(--gold-bright); font: 600 12px var(--sans); text-decoration: none;
+}
+a.map-maker-chip:hover { background: #594728; border-color: var(--gold-bright); }
+.map-maker-chip .mk-av { width: 20px; height: 20px; font-size: 9px; }
+.map-maker-label { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 700px) {
+  .map-maker { max-width: 140px; }
+  .map-maker-chip { height: 34px; padding-right: 5px; border-radius: 17px; font-size: 11px; }
+  /* An edition's first row on a phone: after World's word, the maker's name is cut short before the map's name is
+     (tb-cut-maker), and gives way to the picture alone when too little of it would show (tb-tight-maker). */
+  #topbar.tb-cut-maker .map-maker { flex: 0 100 auto; min-width: 34px; }
+  #topbar.tb-tight-maker .map-maker-chip { width: 34px; justify-content: center; padding: 0; }
+  #topbar.tb-tight-maker .map-maker-label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
+}
+@media (max-width: 375px) {
+  .ports-vbar .map-maker-chip { width: 34px; justify-content: center; padding: 0; }
+  .ports-vbar .map-maker-label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); }
+}
+
+/* ---------- the world view: its own top bar above the map and the country panel ---------- */
+.ports-overlay {
+  position: fixed; inset: 0; z-index: 26;
+  background: #091a2c; color: var(--ink);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+/* The world view has its own top bar, so an edition's top bar (the edition's name and yields) steps aside while it is
+   open. Hidden rather than only covered, so its controls also leave the tab order. */
+body.ports-open #topbar { visibility: hidden; }
+
+.wv-bar {
+  position: relative; z-index: 30; flex: none; height: var(--topbar-h);
+  display: flex; align-items: center; gap: 14px; padding: 0 12px;
+  background: linear-gradient(180deg, #24364a, #131e2a);
+  border-bottom: 1px solid var(--gold);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .5), inset 0 -3px 0 rgba(0, 0, 0, .25);
+}
+.wv-brand {
+  display: inline-flex; align-items: center; gap: 8px; flex: none; padding: 2px 6px 2px 2px; margin-left: -2px;
+  border: 0; border-radius: 15px; background: none; cursor: pointer;
+  font: bold 13px var(--serif); letter-spacing: .12em; text-transform: uppercase; color: var(--gold-bright);
+}
+.wv-brand:hover { background: rgba(236, 208, 142, .1); }
+.wv-emblem {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #2f6a9e, #173a5e); border: 1px solid var(--gold); color: #9fe6d0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .45), 0 0 10px rgba(67, 198, 163, .25);
+}
+.wv-search { position: relative; flex: 1; min-width: 0; max-width: 460px; display: flex; align-items: center; }
+.wv-search input {
+  width: 100%; height: 28px; padding: 0 30px; border-radius: 14px; outline: none;
+  background: rgba(0, 0, 0, .35); border: 1px solid rgba(201, 164, 92, .5);
+  color: var(--ink); font: 13px var(--sans);
+}
+.wv-search input::placeholder { color: rgba(185, 171, 136, .8); }
+.wv-search input:focus { border-color: var(--gold-bright); background: rgba(0, 0, 0, .5); box-shadow: 0 0 0 3px rgba(236, 208, 142, .15); }
+.wv-search input::-webkit-search-cancel-button { filter: sepia(1) saturate(2) hue-rotate(5deg); cursor: pointer; }
+.wv-search-ic { position: absolute; left: 10px; display: inline-flex; color: var(--ink-dim); pointer-events: none; }
+.wv-kbd {
+  position: absolute; right: 9px; display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px;
+  border-radius: 4px; border: 1px solid rgba(201, 164, 92, .45); color: var(--ink-dim); font: 11px var(--sans);
+  pointer-events: none;
+}
+.wv-search input:focus ~ .wv-kbd, .wv-search input:not(:placeholder-shown) ~ .wv-kbd { display: none; }
+.wv-results {
+  position: absolute; top: calc(100% + 7px); left: 0; right: 0; min-width: 280px; z-index: 31;
+  max-height: min(420px, 70vh); overflow-y: auto; padding: 4px; border-radius: 8px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--line);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .6);
+}
+.wv-opt { /* an edition's suggestion is a link */
+  display: flex; align-items: center; gap: 9px; min-height: 38px; padding: 6px 9px; border-radius: 6px;
+  cursor: pointer; font-size: 13.5px; color: inherit; text-decoration: none;
+}
+.wv-opt[aria-selected="true"], .wv-opt:hover { background: rgba(201, 164, 92, .17); }
+.wv-opt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.wv-opt-meta { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--ink-dim); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wv-opt-meta.k-merged { color: var(--gold-bright); font-weight: 600; }
+.wv-noresult { padding: 10px; font-size: 13px; color: var(--ink-dim); }
+.wv-bar-end { margin-left: auto; display: flex; align-items: center; gap: 12px; flex: none; }
+.wv-coverage { font-size: 12px; color: var(--ink-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wv-coverage b { color: var(--ink); font-weight: 600; }
+.wv-coverage-makers { /* opens the list of makers */
+  padding: 0; border: 0; background: none; cursor: pointer; font: inherit; color: inherit;
+  text-decoration: underline; text-decoration-color: rgba(201, 164, 92, .6); text-underline-offset: 3px;
+}
+.wv-coverage-makers:hover, .wv-coverage-makers:hover b { color: var(--gold-bright); }
+.wv-gh {
+  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 13px;
+  border: 1px solid rgba(201, 164, 92, .45); color: var(--ink-dim); font: 12px var(--sans); text-decoration: none;
+}
+.wv-gh:hover { color: var(--gold-bright); border-color: var(--gold-bright); }
+.wv-back {
+  display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 10px 0 4px; border-radius: 15px;
+  cursor: pointer; white-space: nowrap;
+  background: linear-gradient(180deg, #2c4058, #1a2939); border: 1px solid var(--gold);
+  color: var(--gold-bright); font: 600 12.5px var(--serif); letter-spacing: .03em;
+}
+.wv-back:hover { border-color: var(--gold-bright); background: linear-gradient(180deg, #37506c, #22354a); }
+.wv-back-emblem {
+  display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  background: #2a4d8f; border: 1px solid var(--gold); color: #fff; font-size: 11px;
+}
+
+/* ---------- map beside the country panel ---------- */
+.ports-atlas {
+  position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 390px;
+}
+.ports-map-pane { position: relative; display: flex; min-width: 0; min-height: 0; border-right: 1px solid var(--line); }
+.ports-canvas-wrap { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #08192b; }
+#ports-world-canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+#ports-world-canvas.dragging { cursor: grabbing; }
+.wv-loading {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font: 18px var(--serif); letter-spacing: .2em; text-transform: uppercase; color: var(--gold-bright);
+}
+/* A first-visit hint over the map; it fades once the map is clicked, dragged or zoomed. */
+.wv-hint {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 2; pointer-events: none;
+  padding: 6px 14px; border-radius: 16px; white-space: nowrap;
+  background: rgba(10, 20, 32, .82); border: 1px solid rgba(201, 164, 92, .45);
+  font-size: 12.5px; color: var(--ink); box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
+  transition: opacity .4s;
+}
+.wv-hint b { color: var(--gold-bright); font-weight: 600; }
+.wv-hint.gone { opacity: 0; }
+
+.ports-map-controls {
+  position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; flex-direction: column; gap: 4px;
+}
+.ports-ctrl {
+  width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
+  background: rgba(16, 25, 35, .92); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--gold-bright); font: 600 16px var(--sans);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .4);
+}
+.ports-ctrl:hover { border-color: var(--gold-bright); background: rgba(34, 50, 68, .96); }
+
+/* The map key doubles as a filter: click a kind to show only those countries. */
+.ports-legend {
+  position: absolute; left: 12px; bottom: 12px; z-index: 2; max-width: calc(100% - 70px);
+  display: flex; flex-wrap: wrap; gap: 2px; padding: 4px;
+  background: rgba(13, 22, 32, .88); border: 1px solid rgba(201, 164, 92, .35); border-radius: 9px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.wv-key {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 3px 9px; border-radius: 13px;
+  border: 1px solid transparent; background: transparent; cursor: pointer; white-space: nowrap;
+  color: var(--ink-dim); font: 11.5px var(--sans);
+}
+.wv-key:hover { color: var(--ink); border-color: rgba(201, 164, 92, .45); background: rgba(255, 255, 255, .04); }
+.wv-key[aria-pressed="true"] { color: var(--gold-bright); border-color: var(--gold-bright); background: linear-gradient(180deg, #5a4a24, #3a2f15); }
+.wv-key-clear { color: var(--gold-bright); }
+.wv-dot {
+  display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none;
+  border: 1px solid rgba(0, 0, 0, .55);
+}
+.wv-dot.k-merged { background: #ecd08e; }
+.wv-dot.k-live { background: #43c6a3; }
+.wv-dot.k-ext { background: #e09d4f; border-radius: 2px; transform: rotate(45deg); width: 8px; height: 8px; }
+.wv-dot.k-custom { background: #b08cf0; }
+.wv-dot.k-repo { background: #8fb2d9; }
+.wv-dot.k-none { background: #1a2b3d; border-color: rgba(116, 152, 184, .6); }
+
+.ports-tip {
+  position: absolute; z-index: 4; pointer-events: none; max-width: 280px;
+  padding: 7px 10px; border-radius: 6px;
+  background: rgba(12, 19, 28, .96); border: 1px solid var(--gold);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .55); font-size: 12px; line-height: 1.4;
+}
+.ports-tip .pt-head { display: flex; align-items: center; gap: 6px; color: var(--gold-bright); font-family: var(--serif); font-size: 14px; }
+.ports-tip .pt-sub { color: var(--ink); font-size: 11.5px; margin-top: 2px; }
+.ports-tip .pt-more { color: var(--ink-dim); font-size: 11px; margin-top: 3px; font-style: italic; }
+
+/* ---------- the country panel: every country in a list, or one country's card ---------- */
+.ports-side {
+  position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  background: linear-gradient(180deg, #162230, #0e1620); /* opaque: on phones it lies over the map */
+}
+.wv-grip { display: none; }
+.wv-side-scroll {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(201, 164, 92, .4) transparent;
+}
+#wv-side-content { padding: 14px 14px 18px; }
+.wv-pad { padding: 8px 2px; font-size: 13px; }
+.wv-pad p { margin: 0 0 8px; }
+
+.wv-h {
+  margin: 0; font: normal 20px var(--serif); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--gold-bright); line-height: 1.2;
+}
+.wv-h:focus { outline: none; }
+.wv-lede { margin: 6px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-dim); }
+
+.wv-tiles { display: grid; grid-template-columns: 1fr; gap: 6px; margin: 14px 0 2px; }
+.wv-tile { /* a link to the edition (index.js editionLink) */
+  display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 0 0 9px; border-radius: 9px; overflow: hidden;
+  cursor: pointer; text-align: left; color: var(--ink); text-decoration: none;
+  border: 1px solid var(--gold); background: linear-gradient(180deg, rgba(158, 124, 54, .32), rgba(60, 45, 18, .4));
+  box-shadow: inset 0 1px 0 rgba(255, 240, 200, .12);
+}
+.wv-tile-emblem {
+  flex: none; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%;
+  background: #2a4d8f; border: 1px solid var(--gold); color: #fff; font-size: 13px;
+}
+.wv-tile-text { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 8px 0; }
+.wv-tile-text b { font: normal 14px var(--serif); color: var(--gold-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wv-tile-text small { font-size: 10.5px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wv-play {
+  flex: none; align-self: stretch; display: inline-flex; align-items: center; gap: 5px; padding: 0 12px;
+  border-left: 1px solid rgba(236, 208, 142, .4);
+  background: linear-gradient(180deg, #e6c47a, #b68d3e); color: #1a1208; font: 700 12.5px var(--sans);
+}
+.wv-tile:hover .wv-play { background: linear-gradient(180deg, #f5d995, #c99d48); }
+/* A picture card: a piece of the edition's own map above its row, all of it the one link. */
+.wv-tiles-pictured { gap: 10px; }
+.wv-tile-pictured { display: block; padding: 0; }
+.wv-tile-pic { position: relative; display: block; line-height: 0; background: #0d2a47; border-bottom: 1px solid rgba(236, 208, 142, .5); }
+.wv-tile-pic img { display: block; width: 100%; height: auto; aspect-ratio: 716 / 208; object-fit: cover; } /* the whole picture at any width */
+.wv-tile-pic::after { /* a soft edge, so the row below reads as part of the same card */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 240, 200, .08), inset 0 -22px 20px -16px rgba(8, 14, 20, .6);
+}
+.wv-tile:hover .wv-tile-pic img { filter: brightness(1.1) saturate(1.05); }
+.wv-tile-row { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 9px; }
+/* Whose map an edition began as, on its picture. */
+.wv-tile-by {
+  position: absolute; left: 7px; bottom: 7px; z-index: 1; display: inline-flex; align-items: center; gap: 6px;
+  max-width: calc(100% - 14px); padding: 2px 9px 2px 2px; border-radius: 13px;
+  background: rgba(10, 18, 28, .84); border: 1px solid rgba(236, 208, 142, .5);
+  color: #f3ead2; font: 600 11.5px/1.2 var(--sans); white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .45);
+}
+.wv-tile-by .mk-av { width: 20px; height: 20px; font-size: 9px; border-width: 0; }
+.wv-tile-pic .mk-pic { width: 100%; height: 100%; aspect-ratio: auto; } /* not the map picture's shape (above) */
+.wv-tile-by > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- the makers: a picture and a name wherever a map is shown, and the list of everyone who made one ---------- */
+/* A maker's picture: their initials, and over them the picture from their GitHub account once it has loaded. */
+.mk-av {
+  position: relative; flex: none; display: inline-grid; place-items: center; overflow: hidden;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: hsl(var(--mk-hue, 210) 36% 30%); border: 1px solid rgba(236, 208, 142, .55);
+  color: #f3ead2; font: 600 11px/1 var(--sans); letter-spacing: .02em; text-transform: none;
+}
+.mk-pic { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #1b2a3a; }
+.mk-av-house { background: radial-gradient(circle at 35% 30%, #2f6a9e, #173a5e); color: #9fe6d0; }
+.mk-av-house .icon { width: 58%; height: 58%; }
+.mk-av-lg { width: 40px; height: 40px; font-size: 15px; }
+.mk-name { color: var(--ink); font-weight: 600; text-decoration: none; }
+a.mk-name:hover { color: var(--gold-bright); text-decoration: underline; text-underline-offset: 2px; }
+
+/* The makers' place on the country list, one block under the editions: today's map, which is a different maker's
+   every day, and under it the way to the list of makers, with the first makers' faces and how many there are. */
+.wv-credit {
+  margin: 10px 0 0; border-radius: 9px; overflow: hidden;
+  background: rgba(0, 0, 0, .26); border: 1px solid rgba(201, 164, 92, .32);
+}
+.wv-today, .wv-makers {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 10px;
+  border: 0; background: none; cursor: pointer; text-align: left; text-decoration: none; color: var(--ink); font: inherit;
+}
+.wv-today { padding: 8px 9px 8px 10px; border-bottom: 1px solid rgba(201, 164, 92, .22); }
+.wv-today:hover, .wv-today:focus-visible, .wv-makers:hover, .wv-makers:focus-visible { background: rgba(201, 164, 92, .12); }
+.wv-today:focus-visible, .wv-makers:focus-visible { outline-offset: -2px; }
+.wv-today-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.wv-today-text b { font: normal 15px/1.25 var(--serif); color: var(--gold-bright); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wv-today-text small { font-size: 11.5px; line-height: 1.35; color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wv-today-text .wv-today-lbl { font: 600 9.5px/1.4 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.wv-today .mk-map-go { width: 30px; height: 30px; }
+.wv-today .mk-map-go .icon { width: 13px; height: 13px; }
+.wv-makers-faces { flex: none; display: flex; padding-left: 7px; }
+.wv-makers-faces .mk-av { margin-left: -7px; box-shadow: 0 0 0 2px #131d29; }
+.wv-makers-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.wv-makers-text b { font: normal 14px var(--serif); color: var(--gold-bright); letter-spacing: .02em; white-space: nowrap; }
+.wv-makers-text small { font-size: 11px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The list of makers: each with their maps, and a map's line opens it. */
+.mk-list { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mk-row {
+  padding: 9px 10px 10px; border-radius: 9px; scroll-margin-top: 8px;
+  background: rgba(0, 0, 0, .27); border: 1px solid rgba(201, 164, 92, .24);
+}
+.mk-row.is-original { border-color: rgba(236, 208, 142, .62); background: linear-gradient(90deg, rgba(201, 164, 92, .15), rgba(0, 0, 0, .27)); }
+.mk-row.is-focus { border-color: var(--gold-bright); box-shadow: 0 0 0 1px rgba(236, 208, 142, .5); }
+.mk-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 7px 10px; align-items: start; }
+.mk-row > .mk-av { grid-row: 1 / span 2; }
+.mk-id { min-width: 0; align-self: center; }
+.mk-row > .mk-id:last-child { grid-row: 1 / span 2; }
+.mk-line { display: flex; align-items: center; flex-wrap: wrap; gap: 3px 8px; }
+.mk-row .mk-name { font: normal 15.5px/1.25 var(--serif); letter-spacing: .02em; color: var(--gold-bright); overflow-wrap: anywhere; }
+.mk-tag {
+  padding: 1px 6px; border-radius: 8px; font-size: 9.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+  white-space: nowrap; background: rgba(236, 208, 142, .2); color: var(--gold-bright); border: 1px solid rgba(236, 208, 142, .55);
+}
+.mk-handle { font-size: 11.5px; color: var(--ink-dim); }
+.mk-sub { margin-top: 2px; font-size: 11.5px; line-height: 1.4; color: var(--ink-dim); }
+.mk-stars { color: var(--gold-bright); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mk-stars::before { content: "★ "; font-weight: 400; }
+.mk-maps { grid-column: 2; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.mk-map { /* a button, or a link to an edition or to a map's own site */
+  width: 100%; display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 3px 5px 3px 8px;
+  border-radius: 7px; cursor: pointer; text-align: left; text-decoration: none;
+  color: var(--ink); font: 13px var(--sans);
+  background: rgba(255, 255, 255, .045); border: 1px solid rgba(201, 164, 92, .26);
+}
+.mk-map:hover, .mk-map:focus-visible { border-color: var(--gold-bright); background: rgba(201, 164, 92, .14); }
+.mk-map-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-map-note { flex: none; font-size: 11px; color: var(--ink-dim); white-space: nowrap; }
+.mk-map-note.mk-stars { color: var(--gold-bright); font-size: 12px; }
+.mk-map-go {
+  flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  color: #fff6dc; background: linear-gradient(180deg, #2b7a69, #17463d);
+}
+.mk-map-go.k-merged { background: linear-gradient(180deg, #e8c77d, #b38a3c); color: #1a1208; }
+.mk-map-go.k-ext { background: linear-gradient(180deg, #9a6a2e, #5e3f17); }
+.mk-map-go.k-repo { background: linear-gradient(180deg, #3c546e, #233447); }
+.mk-map-go .icon { width: 11px; height: 11px; }
+
+.wv-kinds { display: none; } /* narrow screens: the map key moves into the panel */
+
+.wv-group {
+  display: flex; align-items: center; gap: 6px; margin: 18px 0 6px;
+  font: 600 10.5px var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--gold);
+}
+.wv-group span { color: var(--ink-dim); font-weight: 500; letter-spacing: .05em; }
+.wv-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.wv-row {
+  width: 100%; display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 5px 8px;
+  border-radius: 7px; border: 1px solid transparent; background: none; cursor: pointer; text-align: left;
+  color: var(--ink); font: 13.5px var(--sans);
+}
+.wv-row:hover, .wv-row:focus-visible { background: rgba(201, 164, 92, .13); border-color: rgba(201, 164, 92, .38); }
+.wv-flag { flex: none; width: 22px; font-size: 17px; line-height: 1; text-align: center; }
+.wv-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wv-row-meta { flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ink-dim); }
+.wv-row.k-merged .wv-row-meta { color: var(--gold-bright); font-weight: 600; }
+.wv-chev { flex: none; color: var(--gold); opacity: .65; font-size: 17px; line-height: 1; }
+.wv-rows-none .wv-row { min-height: 34px; color: #cdbf9c; }
+
+.wv-foot {
+  margin-top: 18px; padding-top: 12px; border-top: 1px solid rgba(201, 164, 92, .25);
+  font-size: 12px; line-height: 1.5; color: var(--ink-dim);
+}
+.wv-foot p { margin: 0 0 6px; }
+.wv-foot a, .wv-linkbtn { color: var(--gold-bright); }
+.wv-linkbtn {
+  padding: 0; border: 0; background: none; cursor: pointer; font: inherit; text-align: left;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+
+/* one country's card */
+.wv-backlink {
+  display: inline-flex; align-items: center; gap: 4px; margin: -4px 0 10px -6px; padding: 5px 9px 5px 6px;
+  border: 0; border-radius: 6px; background: none; cursor: pointer;
+  color: var(--gold-bright); font: 600 12.5px var(--sans);
+}
+.wv-backlink:hover { background: rgba(201, 164, 92, .13); }
+.wv-head { display: flex; align-items: center; gap: 12px; }
+.wv-flag-lg {
+  width: 46px; height: 46px; display: grid; place-items: center; font-size: 28px; border-radius: 50%;
+  background: rgba(255, 255, 255, .05); border: 1px solid rgba(201, 164, 92, .45);
+}
+.wv-head-text { min-width: 0; }
+.wv-head .wv-h { font-size: 22px; overflow-wrap: anywhere; }
+.wv-sub { margin-top: 2px; font-size: 12px; color: var(--ink-dim); }
+
+.wv-primary {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; margin: 14px 0 4px; padding: 9px 14px;
+  border-radius: 11px; border: 1px solid var(--gold-bright); cursor: pointer; text-decoration: none; text-align: left;
+  color: #fff6dc; background: linear-gradient(180deg, #2b7a69, #17463d);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 200, .25), 0 4px 14px rgba(0, 0, 0, .45);
+  transition: filter .12s, transform .08s;
+}
+.wv-primary:hover { filter: brightness(1.12); }
+.wv-primary:active { transform: translateY(1px); }
+.wv-primary.k-merged { background: linear-gradient(180deg, #e8c77d, #b38a3c); color: #1a1208; }
+.wv-primary.k-ext { background: linear-gradient(180deg, #9a6a2e, #5e3f17); }
+.wv-primary.k-repo, .wv-primary.k-build { background: linear-gradient(180deg, #3c546e, #233447); }
+.wv-primary.k-custom { background: linear-gradient(180deg, #6c50a8, #3d2b66); }
+.wv-primary-ic {
+  flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%;
+  background: rgba(0, 0, 0, .24);
+}
+.wv-primary.k-merged .wv-primary-ic { background: rgba(26, 18, 8, .16); }
+.wv-primary-ic .icon { width: 15px; height: 15px; }
+.wv-primary-text { display: flex; flex-direction: column; min-width: 0; }
+.wv-primary-text b { font: 600 16px var(--serif); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wv-primary-text small { font-size: 11.5px; opacity: .86; }
+
+.wv-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.wv-facts li { min-width: 0; display: flex; }
+.wv-fact {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 7px 8px; border-radius: 7px;
+  background: rgba(0, 0, 0, .25); border: 1px solid rgba(201, 164, 92, .22); color: inherit; text-decoration: none;
+}
+a.wv-fact:hover { border-color: var(--gold); background: rgba(201, 164, 92, .1); }
+.wv-fact-k { font-size: 10.5px; line-height: 1.3; color: var(--ink-dim); }
+.wv-fact-k small { font-size: 10px; color: var(--gold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wv-fact-v { margin-top: 3px; font: 600 13.5px var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+.wv-src { margin: 5px 0 0; font-size: 10.5px; line-height: 1.4; color: var(--ink-dim); }
+.wv-nowrap { white-space: nowrap; }
+.wv-src a { color: inherit; }
+.wv-nofacts { margin: 12px 0 0; font-size: 12px; color: var(--ink-dim); }
+.wv-empty p { margin: 12px 0 0; font-size: 13px; line-height: 1.45; }
+.wv-empty .wv-linkbtn { display: block; margin-top: 10px; font-size: 12.5px; }
+.wv-empty a.wv-linkbtn { width: fit-content; } /* a link, unlike a button, would fill its row: only its words open it */
+.wv-cards { display: flex; flex-direction: column; gap: 8px; }
+
+/* a map's card: the whole card opens the map */
+.port-card {
+  padding: 10px 11px; border-radius: 8px; cursor: pointer;
+  background: rgba(0, 0, 0, .28); border: 1px solid rgba(201, 164, 92, .24);
+  border-left: 3px solid rgba(201, 164, 92, .35);
+  transition: border-color .12s, background .12s;
+}
+.port-card:hover { background: rgba(201, 164, 92, .09); border-color: rgba(201, 164, 92, .6); }
+.port-card.is-picked { border-color: var(--gold-bright); box-shadow: 0 0 0 1px rgba(236, 208, 142, .45); }
+.port-card.k-merged { border-left-color: #ecd08e; background: linear-gradient(90deg, rgba(201, 164, 92, .12), rgba(0, 0, 0, .26)); }
+.port-card.k-live { border-left-color: #43c6a3; }
+.port-card.k-ext { border-left-color: #e09d4f; }
+.port-card.k-custom { border-left-color: #b08cf0; }
+.port-card.k-repo { border-left-color: #7c9fc6; }
+
+.pc-top { display: flex; gap: 9px; align-items: flex-start; }
+.pc-emblem {
+  flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255, 255, 255, .05); border: 1px solid rgba(201, 164, 92, .35); font-size: 15px;
+}
+.pc-face { width: 36px; height: 36px; font-size: 14px; } /* the maker's picture, where another card has its emblem */
+.pc-head { flex: 1; min-width: 0; }
+.pc-by { margin-top: 1px; font-size: 12.5px; line-height: 1.35; color: var(--ink-dim); overflow-wrap: anywhere; }
+.pc-title-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pc-title-row h3 { margin: 0; font: normal 15px var(--serif); color: var(--gold-bright); letter-spacing: .02em; line-height: 1.25; }
+.pc-badge {
+  font-size: 10px; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 8px;
+  font-weight: 600; white-space: nowrap;
+}
+.pc-badge.k-merged { background: rgba(236, 208, 142, .2); color: var(--gold-bright); border: 1px solid rgba(236, 208, 142, .55); }
+.pc-badge.k-live { background: rgba(67, 198, 163, .16); color: #7ae2c5; border: 1px solid rgba(67, 198, 163, .5); }
+.pc-badge.k-ext { background: rgba(224, 157, 79, .18); color: #f1be7b; border: 1px solid rgba(224, 157, 79, .5); }
+.pc-badge.k-custom { background: rgba(176, 140, 240, .18); color: #d4beff; border: 1px solid rgba(176, 140, 240, .5); }
+.pc-badge.k-repo { background: rgba(143, 178, 217, .14); color: #b5d0ec; border: 1px solid rgba(143, 178, 217, .4); }
+.pc-meta { display: flex; flex-wrap: wrap; gap: 3px 8px; margin-top: 2px; font-size: 11px; color: var(--ink-dim); }
+.pc-meta span:not(:last-child)::after { content: "·"; margin-left: 8px; opacity: .5; }
+.pc-desc { margin: 6px 0 0; font-size: 12px; line-height: 1.4; color: var(--ink); opacity: .9; }
+.pc-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+
+/* a map's star rating (ext/ports/ratings.js): its average and how many rated it, then five stars to rate it with */
+.rt {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 2px 12px; cursor: default;
+  margin-top: 9px; padding-top: 6px; border-top: 1px solid rgba(201, 164, 92, .18);
+  font-size: 11.5px; line-height: 1.3; color: var(--ink-dim);
+}
+.rt[hidden], .rt-give[hidden] { display: none; }
+.rt-avg { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rt-icon {
+  --rt-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5l2.94 5.96 6.56.95-4.75 4.63 1.12 6.54L12 17.5l-5.87 3.08 1.12-6.54L2.5 9.41l6.56-.95z'/%3E%3C/svg%3E");
+  flex: none; width: 15px; height: 15px; background: var(--gold-bright);
+  -webkit-mask: var(--rt-star) center / contain no-repeat; mask: var(--rt-star) center / contain no-repeat;
+}
+.rt:not(.is-rated) .rt-icon, .rt:not(.is-rated) .rt-num { display: none; }
+.rt-num { color: var(--gold-bright); font: 600 13px var(--sans); }
+.rt-give { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; white-space: nowrap; }
+.rt-stars { display: inline-flex; }
+.rt-star {
+  display: grid; place-items: center; width: 24px; height: 28px; padding: 0; border: 0; border-radius: 5px;
+  background: none; cursor: pointer; color: rgba(236, 208, 142, .55);
+}
+.rt-star:focus-visible { outline-offset: -2px; }
+.rt-star svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.rt-star.on { color: #7ae2c5; } /* the visitor's own stars, in another colour than the average's gold */
+.rt-star.on svg { fill: currentColor; }
+.rt.is-busy .rt-stars { opacity: .6; }
+.rt.is-busy .rt-star { cursor: progress; }
+/* Pointing at a star lights it and the ones before it: the rating a click would give. Not on touch screens, where
+   the "hover" would stay on the star last tapped. */
+@media (hover: hover) {
+  .rt:not(.is-busy) .rt-stars:hover .rt-star:not(.on) { color: #fff0be; }
+  .rt:not(.is-busy) .rt-stars:hover .rt-star:not(.on) svg { fill: currentColor; }
+  .rt:not(.is-busy) .rt-stars .rt-star:hover ~ .rt-star { color: rgba(236, 208, 142, .55); }
+  .rt:not(.is-busy) .rt-stars .rt-star:hover ~ .rt-star svg { fill: none; }
+}
+@media (pointer: coarse) {
+  .rt-star { width: 32px; height: 36px; }
+  .rt-star svg { width: 22px; height: 22px; }
+  .rt-bar .rt-star { height: 30px; } /* the bar above an open map keeps its height */
+}
+/* in the bar above an open map, and at the far end of an edition's first row */
+.rt-bar { flex-wrap: nowrap; gap: 10px; margin: 0 4px 0 0; padding: 0; border: 0; }
+.rt-bar:not(.is-rated) .rt-avg { display: none; }
+#topbar .rt-bar { flex: none; margin: 0 0 0 auto; }
+/* Until the window is wide enough for the map's whole name beside them, the bar shows the five stars only. An
+   edition's row has no buttons beside its stars, so there the words stay until the row drops the map's kind too. */
+@media (max-width: 1240px) {
+  .ports-vbar .rt-bar .rt-avg, .ports-vbar .rt-bar .rt-lbl { display: none; }
+}
+@media (max-width: 900px) {
+  #topbar .rt-bar .rt-avg, #topbar .rt-bar .rt-lbl { display: none; }
+}
+
+/* shared buttons */
+.ports-btn {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 4px 11px; border-radius: 6px;
+  cursor: pointer; font: 12.5px var(--sans); text-decoration: none; white-space: nowrap;
+  color: var(--ink); background: rgba(255, 255, 255, .06); border: 1px solid rgba(201, 164, 92, .42);
+}
+.ports-btn:hover { background: rgba(201, 164, 92, .16); border-color: var(--gold-bright); color: var(--gold-bright); }
+.ports-btn-primary {
+  font-family: var(--serif); letter-spacing: .03em; color: var(--gold-bright);
+  background: linear-gradient(180deg, #3c546e, #233447); border-color: var(--gold);
+}
+.ports-btn-primary:hover { background: linear-gradient(180deg, #4e6b8c, #2d445d); border-color: var(--gold-bright); }
+.ports-btn-ghost { background: transparent; border-color: rgba(201, 164, 92, .25); color: var(--ink-dim); }
+.ports-btn-ghost:hover { color: var(--gold-bright); }
+.ports-rm { margin-left: auto; padding: 3px 8px; }
+
+/* adding a map's link */
+.ports-add-form {
+  display: flex; flex-direction: column; gap: 7px; margin: 12px 14px 0; padding: 10px 11px; border-radius: 8px;
+  background: rgba(0, 0, 0, .34); border: 1px solid rgba(201, 164, 92, .45);
+}
+.ports-add-title { font: 600 11px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+.ports-add-note { margin: 0; font-size: 11.5px; line-height: 1.4; color: var(--ink-dim); }
+.ports-add-form input {
+  width: 100%; height: 32px; padding: 0 9px; border-radius: 6px;
+  background: rgba(12, 20, 30, .9); border: 1px solid rgba(201, 164, 92, .38);
+  color: var(--ink); font: 13px var(--sans);
+}
+.ports-add-form input:focus { outline: none; border-color: var(--gold-bright); }
+.ports-add-row { display: flex; gap: 6px; }
+.ports-add-form .ports-add-iso { width: 130px; flex: none; text-transform: uppercase; }
+.ports-add-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.ports-add-err { font-size: 12px; color: #f08a6a; }
+
+/* ---------- the viewer: a community map open inside EarthCiv ---------- */
+.ports-viewer { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* Its bar starts as an edition's top bar does: the map menu that names the open map, then World (css/style.css has
+   the menu's look), at the same place and size, so the way to every other map stays where it was. */
+.ports-vbar {
+  position: relative; z-index: 1; /* its shadow falls on the map below */
+  display: flex; align-items: center; gap: 16px; padding: 0 12px; flex: none; /* one row: the map's name shortens */
+  min-height: var(--topbar-h); /* where the world view's top bar was, at the same height */
+  background: linear-gradient(180deg, #24364a, #131e2a); border-bottom: 1px solid var(--gold);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .5), inset 0 -3px 0 rgba(0, 0, 0, .25);
+}
+/* The menu is as wide as the open map's name. In a bar too narrow for that, index.js (fitViewerBar) makes room a
+   step at a time, as an edition's top bar does on the narrowest phones: World drops its word (data-tight="1"), then
+   its count (2), then the menu gives up some padding and its letter spacing (3). After that the name is cut short. */
+.ports-vbar .country-switcher, .ports-vbar .brand { flex: 0 1 auto; min-width: 0; }
+.ports-vbar .country-switcher { height: auto; max-width: none; } /* a phone's top bar sets both for its own first row */
+.ports-vbar[data-tight] .ports-launch-lbl { display: none !important; }
+.ports-vbar[data-tight="2"] .ports-launch-count, .ports-vbar[data-tight="3"] .ports-launch-count { display: none; }
+.ports-vbar[data-tight="3"] .brand { letter-spacing: 0; }
+.ports-vbar[data-tight="3"] .map-picker { padding: 0 17px 0 6px; background-position: right 5px center; }
+.ports-vkind { flex: none; }
+.ports-vactions { display: flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
+
+.ports-vstage { position: relative; flex: 1; min-height: 0; background: #0c2238; }
+.ports-iframe { display: block; width: 100%; height: 100%; border: 0; background: #0c2238; }
+
+.ports-vloading {
+  position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  background: rgba(10, 26, 44, .92);
+}
+.ports-spinner {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2.5px solid rgba(201, 164, 92, .25); border-top-color: var(--gold-bright);
+  animation: ports-spin .9s linear infinite;
+}
+@keyframes ports-spin { to { transform: rotate(360deg); } }
+.ports-vloading-text { font: normal 16px var(--serif); letter-spacing: .12em; text-transform: uppercase; color: var(--gold-bright); }
+.ports-vloading-by { display: inline-flex; align-items: center; gap: 8px; margin-top: -4px; font-size: 13.5px; color: var(--ink); }
+.ports-vloading-by b { font-weight: 600; color: var(--gold-bright); }
+.ports-vloading-by .mk-av { width: 30px; height: 30px; font-size: 12px; }
+
+.ports-vnotice {
+  position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 4;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 7px 11px; border-radius: 6px; font-size: 12px;
+  background: rgba(14, 23, 34, .94); border: 1px solid var(--gold);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .55);
+}
+.ports-vnotice-actions { display: flex; align-items: center; gap: 6px; }
+.ports-vnotice-by { flex: 1 1 240px; min-width: 0; display: flex; align-items: center; gap: 9px; line-height: 1.4; }
+.ports-vnotice-by .mk-av { width: 28px; height: 28px; }
+.ports-vnotice-by .mk-name { color: var(--gold-bright); }
+
+/* ---------- narrower screens: the map fills the screen and the panel is a sheet over its bottom ---------- */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .ports-atlas { grid-template-columns: minmax(0, 1fr) 340px; }
+  .wv-coverage { display: none; }
+  .wv-makers-faces .mk-av:nth-child(n+6) { display: none; } /* the narrower panel has room for five faces */
+}
+@media (max-width: 900px) {
+  .ports-atlas { display: block; }
+  .ports-map-pane { position: absolute; inset: 0; border-right: 0; }
+  .ports-side {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 6;
+    max-height: 42%; border-radius: 16px 16px 0 0; border-top: 1px solid var(--gold);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, .55);
+    padding-bottom: env(safe-area-inset-bottom);
+    transition: max-height .25s ease;
+  }
+  .ports-side[data-sheet="full"] { max-height: calc(100% - 8px); }
+  .ports-side[data-sheet="mini"] { max-height: 112px; }
+  .wv-grip {
+    display: flex; align-items: center; justify-content: center; flex: none; width: 100%; height: 24px;
+    padding: 0; border: 0; background: none; cursor: grab; touch-action: none;
+  }
+  .wv-grip span { width: 42px; height: 5px; border-radius: 3px; background: rgba(236, 208, 142, .6); }
+  #wv-side-content { padding: 0 14px 16px; }
+  .ports-add-form { margin-top: 0; }
+  .ports-legend { display: none; }
+  /* One row that scrolls sideways, so the key does not push the list out of the half-open sheet. */
+  .wv-kinds {
+    display: flex; flex-wrap: nowrap; gap: 4px; margin: 12px -14px 0; padding: 0 14px 2px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .wv-kinds::-webkit-scrollbar { display: none; }
+  .wv-kinds .wv-key { border-color: rgba(201, 164, 92, .28); background: rgba(0, 0, 0, .25); }
+  .wv-kinds .wv-key[aria-pressed="true"] { border-color: var(--gold-bright); background: linear-gradient(180deg, #5a4a24, #3a2f15); }
+  .wv-coverage { display: none; }
+  .ports-map-controls { top: 10px; right: 10px; }
+  .ports-ctrl { width: 38px; height: 38px; font-size: 18px; }
+  .wv-h { font-size: 18px; }
+  .wv-head .wv-h { font-size: 20px; }
+  .wv-primary { margin-top: 12px; }
+  .ports-vkind { display: none; } /* the note under the map says whose it is */
+}
+@media (max-width: 700px) {
+  .wv-bar { gap: 8px; padding: 0 8px; }
+  .wv-name, .wv-kbd, .wv-gh { display: none; }
+  .wv-back { padding: 0 8px 0 4px; }
+  .wv-back-lbl { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .wv-search input { font-size: 16px; height: 30px; } /* 16px keeps iOS from zooming the page on focus */
+  .wv-results { position: fixed; top: calc(var(--topbar-h) + 4px); left: 6px; right: 6px; min-width: 0; }
+  .wv-row { min-height: 42px; font-size: 14.5px; }
+  .wv-rows-none .wv-row { min-height: 40px; }
+  .wv-fact-v { font-size: 13px; }
+  .ports-tip { display: none; }
+  /* Phones: the bar is laid out as an edition's first row is, with the same finger-sized controls. New tab shows as
+     an icon (the words stay for screen readers); GitHub stays on the map's card. */
+  .ports-vbar { gap: 5px; padding: 0 6px; min-height: 44px; }
+  .ports-vbar .country-switcher, .ports-vactions { gap: 5px; }
+  .ports-vbar .ports-btn { height: 34px; min-width: 34px; justify-content: center; padding: 0 8px; }
+  .ports-vbar .ports-vlbl {
+    position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .ports-vgh { display: none; }
+  .rt-bar { display: none; } /* no room in a phone's bar: a map is rated on its card */
+  .mk-map { min-height: 42px; font-size: 14px; }
+}
+/* Picture cards where room is short (the sheet on phones and tablets, a laptop's low window): side by side, with
+   just the name and Play under each picture, so the list of countries keeps its place. */
+@media (max-width: 900px), (max-height: 760px) {
+  .wv-lede-what { display: none; } /* the heading already says it */
+  .wv-tiles-pictured { grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .wv-tiles-pictured .wv-tile:not(.wv-tile-pictured) { grid-column: 1 / -1; } /* no picture: a row of its own */
+  .wv-tile-pictured .wv-tile-emblem, .wv-tile-pictured .wv-tile-text small { display: none; }
+  .wv-tile-pictured .wv-tile-text b { white-space: normal; overflow-wrap: anywhere; line-height: 1.15; } /* a long name wraps */
+  .wv-tile-pictured .wv-play { padding: 0 10px; }
+}
+/* Where those cards are narrow (a phone, or two side by side in the panel) they show the squarer picture.
+   index.js picks home-small.jpg on this same condition (<source media>): change the two together. */
+@media (max-width: 600px), (min-width: 901px) and (max-height: 760px) {
+  .wv-tile-pic img { aspect-ratio: 519 / 288; }
+}
+@media (max-width: 379px) {
+  /* Narrow phones: a picture card's name needs the room, and the arrow alone says Play (the card keeps its label). */
+  .wv-tile-pictured .wv-play span { display: none; }
+  .wv-tile-pictured .wv-play { padding: 0 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ports-side, .wv-primary, .ports-launch { transition: none; }
+}
+
+.mk-twitter { display: inline-block; color: var(--gold-bright); font: 500 11.5px/1.5 var(--sans); text-decoration: none; overflow-wrap: anywhere; }
+.mk-twitter:hover { text-decoration: underline; }
+.mk-twitter span { color: var(--ink-dim); }
+.wv-today-connect {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px;
+  padding: 6px 10px 9px; font-size: 12px; border-bottom: 1px solid rgba(201, 164, 92, .22);
+}
+.wv-today-connect .repo-stars { margin-left: auto; padding: 0; }
+
+.repo-stars { display: inline-block; color: var(--gold-bright); font: 500 11px/1.5 var(--sans); text-decoration: none; padding: 2px 0; }
+.repo-stars:hover { text-decoration: underline; text-underline-offset: 2px; }
+.pc-repo-stars { margin-top: 4px; cursor: default; }
+.rt[hidden] + .pc-repo-stars { margin-top: 9px; padding-top: 6px; border-top: 1px solid rgba(201, 164, 92, .18); }
+.mk-map-stars { padding: 2px 0 2px 8px; }
+.featured-creator { padding: 11px 10px; border-bottom: 1px solid rgba(201, 164, 92, .3); background: rgba(201, 164, 92, .08); }
+.featured-creator-heading { display: flex; gap: 10px; align-items: center; }
+.featured-creator-heading .mk-name { font: normal 15.5px/1.25 var(--serif); letter-spacing: .02em; color: var(--gold-bright); overflow-wrap: anywhere; }
+.featured-creator-label { display: block; margin-bottom: 2px; font: 600 9.5px/1.4 var(--sans); color: var(--gold); text-transform: uppercase; letter-spacing: .12em; }
+.featured-creator-maps { list-style: none; padding: 0; margin: 9px 0 0; display: flex; flex-direction: column; gap: 5px; }
